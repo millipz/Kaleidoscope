@@ -27,10 +27,18 @@
 #include <stdint.h>                    // for uint8_t
 #include <string.h>                    // for memset
 
-// For HID report ID and HID interface
+// For HID report ID
 #include "HID-Settings.h"
+
+// Architecture-specific HID includes
+#ifdef ARDUINO_ARCH_NRF52
+#include "kaleidoscope/driver/hid/bluefruit/HIDD.h"
+#elif defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_RP2040)
+// TinyUSB support would go here
+#else
 #include "HID.h"
 #include "MultiReport/PloverHID.h"
+#endif
 
 #include "kaleidoscope/KeyEvent.h"              // for KeyEvent
 #include "kaleidoscope/Runtime.h"               // for Runtime, Runtime_
@@ -73,14 +81,23 @@ EventHandlerResult PloverHID::onKeyEvent(KeyEvent &event) {
 }
 
 void PloverHID::sendReport() {
-  // Ensure the HID descriptor is registered
+#ifdef ARDUINO_ARCH_NRF52
+  // For nrf52/Bluetooth devices, use the Bluefruit HID interface
+  kaleidoscope::driver::hid::bluefruit::blehid.sendInputReport(HID_REPORTID_PLOVER_HID, report_, sizeof(report_));
+#elif defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_RP2040)
+  // For TinyUSB devices (SAMD, RP2040), we need to add PloverHID support to TinyUSB
+  // For now, this is not implemented - would need to add PloverHID to TinyUSB MultiReport
+  // TODO: Add TinyUSB support
+#else
+  // For AVR and other architectures using KeyboardioHID
+  // This requires the KeyboardioHID PloverHID interface to be instantiated
   static bool initialized = false;
   if (!initialized) {
     (void)::PloverHIDInterface;  // Force instantiation to register descriptor
     initialized = true;
   }
-
   HID().SendReport(HID_REPORTID_PLOVER_HID, report_, sizeof(report_));
+#endif
 }
 
 }  // namespace plugin
