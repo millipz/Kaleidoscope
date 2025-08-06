@@ -27,15 +27,13 @@
 #include <stdint.h>                    // for uint8_t
 #include <string.h>                    // for memset
 
-// For HID report ID
-#include "HID-Settings.h"
-
-// Architecture-specific HID includes
+// For HID report ID and architecture-specific HID includes
 #ifdef ARDUINO_ARCH_NRF52
 #include "kaleidoscope/driver/hid/bluefruit/HIDD.h"
 #elif defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_RP2040)
 // TinyUSB support would go here
 #else
+#include "HID-Settings.h"
 #include "HID.h"
 #include "MultiReport/PloverHID.h"
 #endif
@@ -82,8 +80,9 @@ EventHandlerResult PloverHID::onKeyEvent(KeyEvent &event) {
 
 void PloverHID::sendReport() {
 #ifdef ARDUINO_ARCH_NRF52
-  // For nrf52/Bluetooth devices, use the Bluefruit HID interface
-  kaleidoscope::driver::hid::bluefruit::blehid.sendInputReport(HID_REPORTID_PLOVER_HID, report_, sizeof(report_));
+  // For nRF52/Bluetooth devices, use the Bluefruit HID interface
+  // The report ID for PloverHID is defined in the Bluefruit HID implementation
+  kaleidoscope::driver::hid::bluefruit::blehid.sendInputReport(kaleidoscope::driver::hid::bluefruit::RID_PLOVER_HID, report_, sizeof(report_));
 #elif defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_RP2040)
   // For TinyUSB devices (SAMD, RP2040), we need to add PloverHID support to TinyUSB
   // For now, this is not implemented - would need to add PloverHID to TinyUSB MultiReport

@@ -85,7 +85,9 @@ enum {
   MACRO_BT_SELECT_4,  // Select slot 4
   MACRO_BT_PAIR,      // Start pairing for selected slot
   MACRO_BT_OFF,
-  MACRO_BATTERY_LEVEL  // Report current battery level
+  MACRO_BATTERY_LEVEL,  // Report current battery level
+  MACRO_MOVE_TO_STENO,  // Move to steno layer with LED indicator
+  MACRO_MOVE_TO_COLEMAK // Move to colemak layer with LED indicator
 };
 
 // Define our magic combo
@@ -154,25 +156,24 @@ KEYMAPS(
     Key_BLEOff, Key_BLESelectDevice1, Key_BLESelectDevice2, Key_BLESelectDevice3, Key_BLESelectDevice4, Key_BLEStartPairing, ___, ___, ___, ___, ___, M(MACRO_VERSION_INFO),
     Key_LEDEffectNext,___,           Consumer_VolumeIncrement,___,            ___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___,
     ___,            Consumer_ScanPreviousTrack,Consumer_VolumeDecrement,Consumer_ScanNextTrack,___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___,
-    Key_ToggleKeyclick,___,             Consumer_Mute,   ___,                    ___,             ___,             ___,             ___,             ___,                        ___,             ___,             ShiftToLayer(STENO),
+    Key_ToggleKeyclick,___,             Consumer_Mute,   ___,                    ___,             ___,             ___,             ___,             ___,                        ___,             ___,             MoveToLayer(STENO),
     M(MACRO_BATTERY_LEVEL), ___,        ___,             ___,                    ___,             ___,             ___,             ___,             ___,                        ___,             ___,              ___
   ),
 
   [STENO] = KEYMAP
   (
-    // Top row: Layer switching and number key
-    ShiftToLayer(COLEMAK), PH(NUM), ___, ___, ___,
-    // Standard steno layout optimized for Preonic 5x12
-    // Row 1: Number key and left-side consonants, then right-side consonants
-    PH(NUM),        PH(S_L),         PH(T_L),         PH(K_L),         PH(P_L),         PH(W_L),         PH(H_L),         PH(R_L),         PH(F_R),         PH(R_R),         PH(P_R),         PH(B_R),
-    // Row 2: Duplicate left consonants for easier access, right consonants
-    ___,            PH(S_L),         PH(T_L),         PH(K_L),         PH(P_L),         PH(W_L),         PH(H_L),         PH(R_L),         PH(F_R),         PH(R_R),         PH(P_R),         PH(B_R),
-    // Row 3: Main steno row with star in center, right consonants
-    ___,            PH(S_L),         PH(T_L),         PH(P_L),         PH(H_L),         PH(STAR),        PH(STAR),        PH(F_R),         PH(P_R),         PH(L_R),         PH(T_R),         PH(D_R),
-    // Row 4: Additional right consonants and access keys
-    ___,            ___,             ___,             ___,             ___,             ___,             ___,             ___,             PH(L_R),         PH(G_R),         PH(S_R),         PH(Z_R),
+    // Top row: Number keys and layer switching
+    ___, PH(NUM), PH(NUM), PH(NUM), PH(NUM),
+    // Row 1: Number keys across the top
+    PH(NUM),        PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),
+    // Row 2: Left consonants, stars, right consonants (finger keys upper)
+    MoveToLayer(COLEMAK), PH(S_L),   PH(T_L),         PH(P_L),         PH(H_L),         PH(STAR),        PH(STAR),        PH(F_R),         PH(P_R),         PH(L_R),         PH(T_R),         PH(D_R),
+    // Row 3: Left consonants, stars, right consonants (finger keys lower)
+    ___,            PH(S_L),         PH(K_L),         PH(W_L),         PH(R_L),         PH(STAR),        PH(STAR),        PH(R_R),         PH(B_R),         PH(G_R),         PH(S_R),         PH(Z_R),
+    // Row 4: Empty except for some access keys
+    ___,            ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,
     // Row 5: Thumb keys for vowels in center positions
-    ___,            ___,             ___,             PH(A),           PH(O),           ___,             ___,             PH(E),           PH(U),           ___,             ___,             ___
+    ShiftToLayer(COLEMAK), ___,      ___,             ___,             PH(A),           PH(O),           PH(E),           PH(U),           ___,             ___,             ___,             ___
   )
 );
 
@@ -242,8 +243,8 @@ KALEIDOSCOPE_INIT_PLUGINS(
 
   // The EEPROMSettings & EEPROMKeymap plugins make it possible to have an
   // editable keymap in EEPROM.
-  EEPROMSettings,
-  EEPROMKeymap,
+  // EEPROMSettings,  // Commented out to use compiled keymap
+  // EEPROMKeymap,    // Commented out to use compiled keymap
 
   // Focus allows bi-directional communication with the host, and is the
   // interface through which the keymap in EEPROM can be edited.
@@ -345,6 +346,28 @@ void configureIndicators() {
     KeyAddr(0, 2),
     KeyAddr(0, 3)};
   LEDIndicators.setSlots(4, indicator_leds);
+}
+
+// Layer change LED feedback
+void layerChangeIndicator(uint8_t layer) {
+  // Flash all LEDs with layer-specific color using set_all_leds_to
+  if (layer == STENO) {
+    // Orange for steno layer
+    LEDControl.set_all_leds_to(255, 165, 0);  // Orange
+  } else if (layer == COLEMAK) {
+    // Pink for colemak layer
+    LEDControl.set_all_leds_to(255, 192, 203);  // Pink
+  } else {
+    return; // No indicator for other layers
+  }
+
+  LEDControl.syncLeds();
+
+  // Brief delay to show the color
+  delay(300);
+
+  // Return to normal LED mode
+  LEDControl.refreshAll();
 }
 
 
@@ -555,7 +578,7 @@ void setup() {
   Kaleidoscope.setup();
   configureIndicators();
 
-  EEPROMKeymap.setup(10);
+  // EEPROMKeymap.setup(10);  // Commented out to use compiled keymap
   PreonicColormapEffect.max_layers(10);
   LEDRainbowEffect.brightness(25);
 
@@ -566,7 +589,8 @@ void setup() {
   // Disable Keyclick by default
   Keyclick.disable();
 
-  Layer.move(EEPROMSettings.default_layer());
+  // Layer.move(EEPROMSettings.default_layer());  // Commented out to use compiled keymap
+  Layer.move(COLEMAK);  // Start with Colemak layer
 
   // To avoid any surprises, SpaceCadet is turned off by default. However, it
   // can be permanently enabled via Chrysalis, so we should only disable it if
