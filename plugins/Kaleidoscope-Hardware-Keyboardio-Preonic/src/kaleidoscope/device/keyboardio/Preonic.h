@@ -53,6 +53,7 @@ struct cRGB {
 #include "kaleidoscope/driver/hid/Bluefruit.h"
 #include "kaleidoscope/driver/hid/Hybrid.h"
 #include "kaleidoscope/driver/hid/TinyUSB.h"
+#include "kaleidoscope/driver/hid/tinyusb/PloverHID.h"
 #include "kaleidoscope/driver/keyscanner/Base.h"
 #include "kaleidoscope/driver/keyscanner/NRF52KeyScanner.h"
 #include "kaleidoscope/driver/led/WS2812.h"
@@ -224,6 +225,8 @@ struct PreonicKeyScannerProps : public kaleidoscope::driver::keyscanner::NRF52Ke
 
 // If we need to override HID props:
 struct PreonicHIDProps : public kaleidoscope::driver::hid::HybridProps {
+  // Ensure TUSBMultiReport is included for PloverHID support
+  typedef kaleidoscope::driver::hid::tinyusb::TUSBMultiReport_ MultiReport;
   //typedef kaleidoscope::driver::hid::base::AbsoluteMouseProps AbsoluteMouseProps;
   //typedef kaleidoscope::driver::hid::base::AbsoluteMouse<AbsoluteMouseProps> AbsoluteMouse;
 };
@@ -888,18 +891,19 @@ class Preonic : public kaleidoscope::device::Base<PreonicProps> {
     // Disable debug interface if not actively debugging
     NRF_CLOCK->TRACECONFIG = 0;
 
-    mcu().disableUnusedPeripherals();  // As of this writing, disableUnusedPeripherals() does not provide a measurable power efficiency improvement
-    // Turn on the LED power
-
+    mcu().disableUnusedPeripherals();  // As of this writing, disableUnusedPeripherals() does nothing on nRF52.
 
     device::Base<PreonicProps>::setup();
-    last_activity_time_      = millis();
-    last_battery_check_time_ = millis();
-    last_warning_time_       = millis();
-    warning_active_          = false;
-    shutdown_active_         = false;
-    battery_status_          = BatteryStatus::Normal;
-    updateBatteryLevel();
+  }
+
+  // Ensure all HID interfaces are properly initialized
+  void ensureHIDInterfaces() {
+#ifdef ARDUINO_ARCH_NRF52
+    // For nRF52 devices, ensure TUSBMultiReport is initialized
+    // This ensures PloverHID interface is available
+    static auto &multireport = kaleidoscope::driver::hid::tinyusb::TUSBMultiReport();
+    (void)multireport; // Suppress unused variable warning
+#endif
   }
 
   Stream &serialPort() {

@@ -1,8 +1,11 @@
 # This makefile for a Kaleidoscope sketch pulls in all the targets
 # required to build the example
 
+# Use ninja for faster builds when cmake is used
+export CMAKE_GENERATOR := Ninja
 
-
+# Enable ccache for faster compilation
+export KALEIDOSCOPE_CCACHE := 1
 
 ifneq ($(KALEIDOSCOPE_DIR),)
 search_path += $(KALEIDOSCOPE_DIR)
