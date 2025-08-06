@@ -115,13 +115,38 @@ EventHandlerResult PloverHID::onKeyEvent(KeyEvent &event) {
   uint8_t byte_index = key_index / 8;
   uint8_t bit_index = key_index % 8;
 
+  // Debug output for troubleshooting mapping issues
+  Serial.print("PloverHID: Key ");
+  if (event.key == plover_hid::S_L) Serial.print("S_L");
+  else if (event.key == plover_hid::T_L) Serial.print("T_L");
+  else if (event.key == plover_hid::K_L) Serial.print("K_L");
+  else if (event.key == plover_hid::P_L) Serial.print("P_L");
+  else if (event.key == plover_hid::W_L) Serial.print("W_L");
+  else if (event.key == plover_hid::H_L) Serial.print("H_L");
+  else if (event.key == plover_hid::R_L) Serial.print("R_L");
+  else if (event.key == plover_hid::A) Serial.print("A");
+  else Serial.print("OTHER");
+  
+  Serial.print(" -> key_index=");
+  Serial.print(key_index);
+  Serial.print(", byte=");
+  Serial.print(byte_index);
+  Serial.print(", bit=");
+  Serial.print(bit_index);
+
+  // EXPERIMENTAL FIX: Reverse bit order within each byte to match Plover expectations
+  // Based on user feedback that S_L maps to A, T_L maps to H, etc.
+  uint8_t reversed_bit_index = 7 - bit_index;
+  Serial.print(", reversed_bit=");
+  Serial.println(reversed_bit_index);
+
   // Update the report based on key state
   if (keyToggledOn(event.state)) {
-    // Set the bit for key press
-    report_[byte_index] |= (1 << bit_index);
+    // Set the bit for key press (using reversed bit index)
+    report_[byte_index] |= (1 << reversed_bit_index);
   } else if (keyToggledOff(event.state)) {
-    // Clear the bit for key release
-    report_[byte_index] &= ~(1 << bit_index);
+    // Clear the bit for key release (using reversed bit index)
+    report_[byte_index] &= ~(1 << reversed_bit_index);
   }
 
   // Send the report immediately (real-time key state changes)
