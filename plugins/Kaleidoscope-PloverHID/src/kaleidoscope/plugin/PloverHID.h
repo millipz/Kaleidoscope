@@ -76,16 +76,13 @@ enum {
   Z_R,            // -Z (right)
   NUM,            // # (number)
   
-  // Extended keys X1-X26 (24-49)
+  // Extended keys X1-X39 (25-63, total 64 keys: 0-63)
   X1, X2, X3, X4, X5, X6, X7, X8, X9, X10,
   X11, X12, X13, X14, X15, X16, X17, X18, X19, X20,
-  X21, X22, X23, X24, X25, X26,
-  
-  // Additional extended keys X27-X41 (50-64)
-  X27, X28, X29, X30, X31, X32, X33, X34, X35, X36,
-  X37, X38, X39, X40, X41,
-  
-  END = X41,
+  X21, X22, X23, X24, X25, X26, X27, X28, X29, X30,
+  X31, X32, X33, X34, X35, X36, X37, X38, X39,
+
+  END = X39,
 };
 }  // namespace plover_hid
 

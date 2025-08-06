@@ -21,14 +21,14 @@ The Plover HID protocol uses:
 
 The plugin defines 64 keys following the Plover HID specification:
 
-### Standard Steno Keys (0-22)
+### Standard Steno Keys (0-24)
 ```
 S_L T_L K_L P_L W_L H_L R_L A O STAR E U F_R R_R P_R B_R L_R G_R T_R S_R D_R Z_R NUM
 ```
 
-### Extended Keys (23-63)
+### Extended Keys (25-63)
 ```
-X1 through X41
+X1 through X39
 ```
 
 ## Using the Plugin
