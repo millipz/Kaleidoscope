@@ -40,6 +40,7 @@
 #include "Kaleidoscope-LEDControl.h"
 #include "Kaleidoscope-Keyclick.h"
 #include "Kaleidoscope-MagicCombo.h"
+#include "Kaleidoscope-PloverHID.h"
 
 #include "Kaleidoscope-LEDEffect-Rainbow.h"
 #include "Kaleidoscope-LEDEffect-BootGreeting.h"
@@ -108,21 +109,22 @@ USE_MAGIC_COMBOS(
 #define Key_Plus LSHIFT(Key_Equals)
 
 enum {
-  QWERTY,
+  COLEMAK,
   LOWER,
   RAISE,
-  FUN
+  FUN,
+  STENO
 };
 
 // clang-format off
 KEYMAPS(
-  [QWERTY] = KEYMAP
+  [COLEMAK] = KEYMAP
   (
     Consumer_VolumeDecrement, Consumer_VolumeIncrement, M(MACRO_ANY), ShiftToLayer(FUN),                 Consumer_PlaySlashPause,
     Key_Backtick,   Key_1,           Key_2,           Key_3,                   Key_4,           Key_5,           Key_6,           Key_7,           Key_8,                      Key_9,           Key_0,           Key_Minus,
-    Key_Tab,        Key_Q,           Key_W,           Key_E,                   Key_R,           Key_T,           Key_Y,           Key_U,           Key_I,                      Key_O,           Key_P,           Key_Backspace,
-    Key_Escape,     Key_A,           Key_S,           Key_D,                   Key_F,           Key_G,           Key_H,           Key_J,           Key_K,                      Key_L,           Key_Semicolon,   Key_Quote,
-    Key_LeftShift,  Key_Z,           Key_X,           Key_C,                   Key_V,           Key_B,           Key_N,           Key_M,           Key_Comma,                  Key_Period,      Key_Slash,       Key_Enter,
+    Key_Tab,        Key_Q,           Key_W,           Key_F,                   Key_P,           Key_G,           Key_J,           Key_L,           Key_U,                      Key_Y,           Key_Semicolon,   Key_Backspace,
+    Key_Escape,     Key_A,           Key_R,           Key_S,                   Key_T,           Key_D,           Key_H,           Key_N,           Key_E,                      Key_I,           Key_O,           Key_Quote,
+    Key_LeftShift,  Key_Z,           Key_X,           Key_C,                   Key_V,           Key_B,           Key_K,           Key_M,           Key_Comma,                  Key_Period,      Key_Slash,       Key_Enter,
     Key_Hyper,      Key_LeftControl, Key_LeftAlt,     Key_LeftGui,            ShiftToLayer(LOWER),       Key_Backspace,   Key_Space,       ShiftToLayer(RAISE),       Key_LeftArrow,             Key_DownArrow,   Key_UpArrow,     Key_RightArrow
   ),
 
@@ -152,8 +154,25 @@ KEYMAPS(
     Key_BLEOff, Key_BLESelectDevice1, Key_BLESelectDevice2, Key_BLESelectDevice3, Key_BLESelectDevice4, Key_BLEStartPairing, ___, ___, ___, ___, ___, M(MACRO_VERSION_INFO),
     Key_LEDEffectNext,___,           Consumer_VolumeIncrement,___,            ___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___,
     ___,            Consumer_ScanPreviousTrack,Consumer_VolumeDecrement,Consumer_ScanNextTrack,___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___,
-    Key_ToggleKeyclick,___,             Consumer_Mute,   ___,                    ___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___,
+    Key_ToggleKeyclick,___,             Consumer_Mute,   ___,                    ___,             ___,             ___,             ___,             ___,                        ___,             ___,             ShiftToLayer(STENO),
     M(MACRO_BATTERY_LEVEL), ___,        ___,             ___,                    ___,             ___,             ___,             ___,             ___,                        ___,             ___,              ___
+  ),
+
+  [STENO] = KEYMAP
+  (
+    // Top row: Layer switching and number key
+    ShiftToLayer(COLEMAK), PH(NUM), ___, ___, ___,
+    // Standard steno layout optimized for Preonic 5x12
+    // Row 1: Number key and left-side consonants, then right-side consonants
+    PH(NUM),        PH(S_L),         PH(T_L),         PH(K_L),         PH(P_L),         PH(W_L),         PH(H_L),         PH(R_L),         PH(F_R),         PH(R_R),         PH(P_R),         PH(B_R),
+    // Row 2: Duplicate left consonants for easier access, right consonants
+    ___,            PH(S_L),         PH(T_L),         PH(K_L),         PH(P_L),         PH(W_L),         PH(H_L),         PH(R_L),         PH(F_R),         PH(R_R),         PH(P_R),         PH(B_R),
+    // Row 3: Main steno row with star in center, right consonants
+    ___,            PH(S_L),         PH(T_L),         PH(P_L),         PH(H_L),         PH(STAR),        PH(STAR),        PH(F_R),         PH(P_R),         PH(L_R),         PH(T_R),         PH(D_R),
+    // Row 4: Additional right consonants and access keys
+    ___,            ___,             ___,             ___,             ___,             ___,             ___,             ___,             PH(L_R),         PH(G_R),         PH(S_R),         PH(Z_R),
+    // Row 5: Thumb keys for vowels in center positions
+    ___,            ___,             ___,             PH(A),           PH(O),           ___,             ___,             PH(E),           PH(U),           ___,             ___,             ___
   )
 );
 
@@ -206,11 +225,12 @@ COLORMAPS(
     [1] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
     [2] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
     [3] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [4] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
+    [4] = COLORMAP (CYAN,   CYAN,  CYAN,  CYAN),   // STENO layer - cyan for stenography
     [5] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
     [6] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
     [7] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [8] = COLORMAP (BLACK,  BLACK, BLACK, BLACK)  
+    [8] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
+    [9] = COLORMAP (BLACK,  BLACK, BLACK, BLACK)
 )
 
 
@@ -280,6 +300,9 @@ KALEIDOSCOPE_INIT_PLUGINS(
   // The MagicCombo plugin lets you use key combinations to trigger custom
   // actions - a bit like Macros, but triggered by pressing multiple keys at the same time.
   MagicCombo,
+
+  // PloverHID provides support for stenography using the Plover HID protocol
+  PloverHID,
 
   // LEDControl provides support for other LED modes
   LEDControl,
@@ -532,8 +555,8 @@ void setup() {
   Kaleidoscope.setup();
   configureIndicators();
 
-  EEPROMKeymap.setup(9);
-  PreonicColormapEffect.max_layers(9);
+  EEPROMKeymap.setup(10);
+  PreonicColormapEffect.max_layers(10);
   LEDRainbowEffect.brightness(25);
 
   DynamicMacros.reserve_storage(512);
