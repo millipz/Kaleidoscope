@@ -26,7 +26,6 @@
 #include "kaleidoscope/driver/hid/apis/BootKeyboardAPI.h"
 #include "kaleidoscope/driver/hid/apis/ConsumerControlAPI.h"
 #include "kaleidoscope/driver/hid/apis/MouseAPI.h"
-#include "kaleidoscope/driver/hid/apis/PloverHIDAPI.h"
 #include "kaleidoscope/driver/hid/apis/SystemControlAPI.h"
 #include "kaleidoscope/driver/hid/bluefruit/HIDD.h"
 #include "kaleidoscope/driver/ble/Bluefruit.h"
@@ -82,14 +81,14 @@ static const uint8_t report_desc[] = {
   DESCRIPTOR_CONSUMER_CONTROL(HID_REPORT_ID(RID_CONSUMER_CONTROL)),
   DESCRIPTOR_SYSTEM_CONTROL(HID_REPORT_ID(RID_SYSTEM_CONTROL)),
   DESCRIPTOR_ABSOLUTE_MOUSE(HID_REPORT_ID(RID_ABS_MOUSE)),
-  DESCRIPTOR_PLOVER_HID(HID_REPORT_ID(RID_PLOVER_HID)),
+  // TODO: Add DESCRIPTOR_PLOVER_HID when we can include PloverHIDAPI.h without KeyboardioHID conflicts
 };
 
 // Define the static member variables
 TaskHandle_t HIDD::report_task_handle_ = nullptr;
 
 HIDD::HIDD()
-  : BLEHidGeneric(6, 1, 0), queue_handle_(nullptr) {}
+  : BLEHidGeneric(5, 1, 0), queue_handle_(nullptr) {}
 
 err_t HIDD::begin() {
   uint16_t in_lens[] = {
@@ -98,7 +97,7 @@ err_t HIDD::begin() {
     sizeof(HID_ConsumerControlReport_Data_t),
     sizeof(HID_SystemControlReport_Data_t),
     sizeof(HID_MouseAbsoluteReport_Data_t),
-    sizeof(HID_PloverHIDReport_Data_t),
+    // TODO: Add sizeof(HID_PloverHIDReport_Data_t) when descriptor is added
   };
   uint16_t out_lens[] = {1};
 

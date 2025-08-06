@@ -45,7 +45,7 @@ enum {
   RID_CONSUMER_CONTROL,
   RID_SYSTEM_CONTROL,
   RID_ABS_MOUSE,
-  RID_PLOVER_HID,
+  // TODO: Add RID_PLOVER_HID when descriptor is properly integrated
 };
 
 enum class ReportType {
