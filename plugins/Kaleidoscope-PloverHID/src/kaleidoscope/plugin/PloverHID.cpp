@@ -30,24 +30,76 @@
 // For HID report ID and architecture-specific HID includes
 #ifdef ARDUINO_ARCH_NRF52
 #include "kaleidoscope/driver/hid/bluefruit/HIDD.h"
+#include "kaleidoscope/driver/hid/tinyusb/MultiReport.h"
+#include "Adafruit_TinyUSB.h"
 #elif defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_RP2040)
-// TinyUSB support would go here
+#include "kaleidoscope/driver/hid/tinyusb/MultiReport.h"
+#include "Adafruit_TinyUSB.h"
 #else
 #include "HID-Settings.h"
 #include "HID.h"
 #include "MultiReport/PloverHID.h"
+#include "KeyboardioHID.h"
 #endif
 
 #include "kaleidoscope/KeyEvent.h"              // for KeyEvent
 #include "kaleidoscope/Runtime.h"               // for Runtime, Runtime_
 #include "kaleidoscope/event_handler_result.h"  // for EventHandlerResult
 #include "kaleidoscope/key_defs.h"              // for Key
-#include "kaleidoscope/keyswitch_state.h"       // for keyToggledOn, keyToggledOff
+#include "kaleidoscope/keyswitch_state.h"       // for keyswitch_state_t
+#include "kaleidoscope/plugin/LEDControl.h"     // for LEDControl
 
 namespace kaleidoscope {
 namespace plugin {
 
 uint8_t PloverHID::report_[8];
+String PloverHID::setup_debug_ = "";
+
+EventHandlerResult PloverHID::onSetup() {
+  // Debug output via Serial and store for later
+  Serial.println("PloverHID: Starting setup");
+  setup_debug_ = "Setup: ";
+
+#ifdef ARDUINO_ARCH_NRF52
+  Serial.println("PloverHID: nRF52 detected");
+  setup_debug_ += "nRF52 ";
+
+  // For nRF52 devices, we rely on the device's HID configuration
+  // The TUSBMultiReport should already be initialized by the device
+  Serial.println("PloverHID: Using device-configured HID interfaces");
+  setup_debug_ += "DeviceHID ";
+
+  // Check if TinyUSB device is mounted (configured)
+  if (TinyUSBDevice.mounted()) {
+    Serial.println("PloverHID: TinyUSB device is mounted and configured");
+    setup_debug_ += "Mounted ";
+  } else {
+    Serial.println("PloverHID: TinyUSB device is not yet mounted (normal during setup)");
+    setup_debug_ += "NotMounted ";
+  }
+
+#elif defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_RP2040)
+  Serial.println("PloverHID: TinyUSB device detected");
+  setup_debug_ += "TinyUSB ";
+
+  // For other TinyUSB devices, same approach
+  Serial.println("PloverHID: Using device-configured HID interfaces");
+  setup_debug_ += "DeviceHID ";
+
+  if (TinyUSBDevice.mounted()) {
+    setup_debug_ += "Mounted ";
+  } else {
+    setup_debug_ += "NotMounted ";
+  }
+#else
+  Serial.println("PloverHID: AVR device detected");
+  setup_debug_ += "AVR ";
+#endif
+
+  Serial.println("PloverHID: Setup complete");
+  setup_debug_ += "Complete";
+  return EventHandlerResult::OK;
+}
 
 EventHandlerResult PloverHID::onNameQuery() {
   return ::Focus.sendName(F("PloverHID"));
@@ -79,23 +131,43 @@ EventHandlerResult PloverHID::onKeyEvent(KeyEvent &event) {
 }
 
 void PloverHID::sendReport() {
-#ifdef ARDUINO_ARCH_NRF52
-  // For nRF52/Bluetooth devices, use the Bluefruit HID interface
-  // The report ID for PloverHID is defined in the Bluefruit HID implementation
-  kaleidoscope::driver::hid::bluefruit::blehid.sendInputReport(kaleidoscope::driver::hid::bluefruit::RID_PLOVER_HID, report_, sizeof(report_));
-#elif defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_RP2040)
-  // For TinyUSB devices (SAMD, RP2040), we need to add PloverHID support to TinyUSB
-  // For now, this is not implemented - would need to add PloverHID to TinyUSB MultiReport
-  // TODO: Add TinyUSB support
-#else
-  // For AVR and other architectures using KeyboardioHID
-  // This requires the KeyboardioHID PloverHID interface to be instantiated
-  static bool initialized = false;
-  if (!initialized) {
-    (void)::PloverHIDInterface;  // Force instantiation to register descriptor
-    initialized = true;
+  // Debug output with setup information and USB state
+  Serial.print("PloverHID: Sending report: ");
+  for (int i = 0; i < 8; i++) {
+    Serial.print(report_[i], HEX);
+    Serial.print(" ");
   }
-  HID().SendReport(HID_REPORTID_PLOVER_HID, report_, sizeof(report_));
+  Serial.print("| ");
+  Serial.print(setup_debug_);
+  Serial.print(" | USB: ");
+  Serial.print(TinyUSBDevice.mounted() ? "Mounted" : "NotMounted");
+  Serial.print(" Ready: ");
+  Serial.print(TinyUSBDevice.ready() ? "Yes" : "No");
+  Serial.print(" Suspended: ");
+  Serial.println(TinyUSBDevice.suspended() ? "Yes" : "No");
+
+#ifdef ARDUINO_ARCH_NRF52
+  // For nRF52 devices with Hybrid HID (Preonic), send via both interfaces
+  // The Hybrid driver will route to the active connection (USB or Bluetooth)
+
+  Serial.println("PloverHID: Sending via Bluefruit");
+  // Send via Bluefruit (Bluetooth) interface
+  kaleidoscope::driver::hid::bluefruit::blehid.sendInputReport(kaleidoscope::driver::hid::bluefruit::RID_PLOVER_HID, report_, sizeof(report_));
+
+  Serial.println("PloverHID: Sending via TinyUSB");
+  // Send via TinyUSB (USB) interface using MultiReport
+  // Use the same pattern as TUSBConsumerControl and TUSBMouse
+  kaleidoscope::driver::hid::tinyusb::TUSBMultiReport().sendReport(kaleidoscope::driver::hid::tinyusb::RID_PLOVER_HID, report_, sizeof(report_));
+
+#elif defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_RP2040)
+  Serial.println("PloverHID: Sending via TinyUSB");
+  // For TinyUSB devices (SAMD, RP2040), use TinyUSB MultiReport
+  kaleidoscope::driver::hid::tinyusb::TUSBMultiReport().sendReport(kaleidoscope::driver::hid::tinyusb::RID_PLOVER_HID, report_, sizeof(report_));
+#else
+  Serial.println("PloverHID: Sending via KeyboardioHID");
+  // For AVR and other architectures using KeyboardioHID
+  // Use the PloverHIDInterface directly
+  ::PloverHIDInterface.sendReport(report_, sizeof(report_));
 #endif
 }
 

@@ -26,12 +26,12 @@
 
 // Plover HID Protocol Descriptor
 // Based on the specification from https://github.com/dnaq/plover-machine-hid
-// Uses vendor-defined usage page 0xFF50 ("S") with usage 0x564C ("TN")
+// Uses vendor-defined usage page 0xFF50 ("S") with usage 0x4C56 ("TN")
 // Together they spell "STN" for stenography
 #define DESCRIPTOR_PLOVER_HID(...)                                    \
   HID_USAGE_PAGE_N(0xFF50, 2),        /* Vendor-defined page "S" */  \
-  HID_USAGE_N(0x564C, 2),             /* Usage "TN" */               \
-  HID_COLLECTION(HID_COLLECTION_LOGICAL),                            \
+  HID_USAGE_N(0x4C56, 2),             /* Usage "TN" */               \
+  HID_COLLECTION(HID_COLLECTION_APPLICATION),                            \
                                                                      \
   /* Report ID, if any */                                            \
   __VA_ARGS__                                                        \

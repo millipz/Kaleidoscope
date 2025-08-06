@@ -37,11 +37,13 @@ namespace plugin {
 
 class PloverHID : public kaleidoscope::Plugin {
  public:
+  EventHandlerResult onSetup();
   EventHandlerResult onNameQuery();
   EventHandlerResult onKeyEvent(KeyEvent &event);
 
  private:
   static uint8_t report_[8];  // 64-bit report data
+  static String setup_debug_;
   static void sendReport();
 };
 

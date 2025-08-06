@@ -44,9 +44,9 @@ namespace tinyusb {
 
 enum MultiReportIDs {
   RID_CONSUMER_CONTROL = 1,
-  RID_MOUSE,
-  RID_SYSTEM_CONTROL,
-  RID_PLOVER_HID,
+  RID_MOUSE = 2,
+  RID_SYSTEM_CONTROL = 3,
+  RID_PLOVER_HID = 0x50,  // Must be 0x50 to match protocol!
 };
 
 class TUSBMultiReport_ : public HIDD {
