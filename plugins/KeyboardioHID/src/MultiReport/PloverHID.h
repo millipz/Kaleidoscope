@@ -35,4 +35,4 @@ class PloverHID_ {
   void sendReport(void *data, int length);
 };
 
-extern PloverHID_ PloverHID;
+extern PloverHID_ PloverHIDInterface;

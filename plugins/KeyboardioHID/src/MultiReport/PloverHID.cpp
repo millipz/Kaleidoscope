@@ -39,4 +39,4 @@ void PloverHID_::sendReport(void *data, int length) {
   HID().SendReport(HID_REPORTID_PLOVER_HID, data, length);
 }
 
-PloverHID_ PloverHID;
+PloverHID_ PloverHIDInterface;

@@ -76,7 +76,7 @@ void PloverHID::sendReport() {
   // Ensure the HID descriptor is registered
   static bool initialized = false;
   if (!initialized) {
-    (void)::PloverHID;  // Force instantiation to register descriptor
+    (void)::PloverHIDInterface;  // Force instantiation to register descriptor
     initialized = true;
   }
 
