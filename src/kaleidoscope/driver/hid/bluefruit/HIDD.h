@@ -125,9 +125,9 @@ class HIDD : public BLEHidGeneric {
 
  private:
   static constexpr size_t QUEUE_SIZE               = 512;  // Absurdly large queue size
-  static constexpr uint16_t MAX_BLE_NOTIFY_RETRIES = 500;
-  static constexpr uint8_t RETRY_DELAY_MS          = 10;  // Time between retries
-  static constexpr uint8_t KEYSTROKE_INTERVAL_MS   = 1;
+  static constexpr uint16_t MAX_BLE_NOTIFY_RETRIES = 3;   // Reduced retries for lower latency
+  static constexpr uint8_t RETRY_DELAY_MS          = 1;   // Time between retries - reduced for low latency
+  static constexpr uint8_t KEYSTROKE_INTERVAL_MS   = 0;
   ;  // Min time between keystrokes
   // Queue storage and handle
   StaticQueue_t queue_buffer_;

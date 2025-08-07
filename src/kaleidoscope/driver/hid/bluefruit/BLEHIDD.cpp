@@ -145,8 +145,6 @@ void HIDD::startReportProcessing() {
     return;
   }
 
-  DEBUG_BLE_MSG("Starting report processing");
-
   // Only create the task if it doesn't exist
   if (report_task_handle_ == nullptr) {
     BaseType_t task_created = xTaskCreate(
@@ -158,22 +156,15 @@ void HIDD::startReportProcessing() {
       &report_task_handle_);
 
     if (task_created != pdPASS) {
-      DEBUG_BLE_MSG("Failed to create report processing task");
       return;
     }
-
-    DEBUG_BLE_MSG("Report processing task created");
   } else {
-    DEBUG_BLE_MSG("Report processing task already running");
     // Notify the task in case it's waiting
     xTaskNotifyGive(report_task_handle_);
-    DEBUG_BLE_MSG("Report processing task notified");
   }
 }
 
 void HIDD::stopReportProcessing() {
-  DEBUG_BLE_MSG("Stopping report processing");
-
   // Only delete the task if it exists
   if (report_task_handle_ != nullptr) {
     // Notify task to wake it up if it's waiting
@@ -188,17 +179,12 @@ void HIDD::stopReportProcessing() {
       }
 
       // Wait a bit for the task to process remaining reports
-      DEBUG_BLE_MSG("Waiting for task to finish processing reports");
       vTaskDelay(pdMS_TO_TICKS(10));
     }
 
     // Delete the task
     vTaskDelete(report_task_handle_);
     report_task_handle_ = nullptr;
-
-    DEBUG_BLE_MSG("Report processing task deleted");
-  } else {
-    DEBUG_BLE_MSG("Report processing task not running");
   }
 }
 
@@ -212,7 +198,6 @@ void HIDD::prepareForSleep() {
 
 void HIDD::clearReportQueue() {
   if (queue_handle_) {
-    DEBUG_BLE_MSG("Clearing report queue");
     xQueueReset(queue_handle_);
   }
 }
@@ -224,8 +209,6 @@ bool HIDD::hasQueuedReports() const {
 void HIDD::processReportQueue_(void *pvParameters) {
   HIDD *hidd = static_cast<HIDD *>(pvParameters);
 
-  DEBUG_BLE_MSG("Starting report processing task");
-
   while (true) {
     // First, process any reports that are already in the queue
     bool processed_any = false;
@@ -236,29 +219,29 @@ void HIDD::processReportQueue_(void *pvParameters) {
       // Try to process the next report
       if (!hidd->processNextReport_()) {
         // Failed to send - wait a bit before next retry
-        DEBUG_BLE_MSG("Failed to send report, waiting %dms before next retry", RETRY_DELAY_MS);
-        vTaskDelay(pdMS_TO_TICKS(RETRY_DELAY_MS));
+        if (RETRY_DELAY_MS > 0) {
+          vTaskDelay(pdMS_TO_TICKS(RETRY_DELAY_MS));
+        }
       } else {
-        // Successfully sent a report
-        DEBUG_BLE_MSG("Sent report successfully, waiting %dms before next report", KEYSTROKE_INTERVAL_MS);
-        vTaskDelay(pdMS_TO_TICKS(KEYSTROKE_INTERVAL_MS));
+        // Successfully sent a report - no artificial delay for low latency
+        if (KEYSTROKE_INTERVAL_MS > 0) {
+          vTaskDelay(pdMS_TO_TICKS(KEYSTROKE_INTERVAL_MS));
+        }
       }
 
-      // Continue the loop to process more reports or retry
-      if (processed_any) {
-        continue;
-      }
+      // Continue processing reports without delay
+      // (removed broken logic that could cause infinite loops)
     }
 
     // Use a critical section to double-check the queue and prepare for sleep
     taskENTER_CRITICAL();
 
     if (uxQueueMessagesWaiting(hidd->queue_handle_) == 0) {
-      // No reports to process, prepare for long sleep
+      // No reports to process - yield to other tasks but don't sleep long
       taskEXIT_CRITICAL();
-
-      // Wait for notification with a long timeout for power saving
-      ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(30000));  // 30 second timeout
+      
+      // Very short yield to prevent busy-waiting but maintain responsiveness
+      vTaskDelay(pdMS_TO_TICKS(1));
     } else {
       // There are reports to process
       taskEXIT_CRITICAL();
@@ -312,15 +295,12 @@ bool HIDD::processNextReport_() {
     // Add it back with updated retry count at the front of the queue
     if (xQueueSendToFront(queue_handle_, &report, 0) != pdTRUE) {
       // If we can't re-queue, treat it as a failure
-      DEBUG_BLE_MSG("Failed to re-queue report for retry");
       return true;
     }
-
-    DEBUG_BLE_MSG("Retrying report, %d retries left", report.retries_left);
+    
     return false;  // Signal failure so we'll wait before next retry
   } else {
     // Out of retries, remove the failed item
-    DEBUG_BLE_MSG("Failed to send report, removing from queue");
     xQueueReceive(queue_handle_, &report, 0);
     return true;
   }
@@ -329,28 +309,8 @@ bool HIDD::processNextReport_() {
 bool HIDD::queueReport_(ReportType type, uint8_t report_id, const void *data, uint8_t length) {
   if (!queue_handle_) return false;
 
-  // Try to queue the report for 5 seconds before considering eviction
-  const TickType_t QUEUE_RETRY_TIMEOUT = pdMS_TO_TICKS(5000);  // 5 seconds in ticks
-  TickType_t start_time                = xTaskGetTickCount();
-
-  // Keep trying to queue while there's no space and we haven't exceeded our timeout
-  while (uxQueueSpacesAvailable(queue_handle_) == 0) {
-    // Calculate remaining time in our retry window
-    TickType_t now     = xTaskGetTickCount();
-    TickType_t elapsed = now - start_time;
-
-    // If we've exceeded our 5-second retry window, break out to try eviction
-    if (elapsed >= QUEUE_RETRY_TIMEOUT) {
-      DEBUG_BLE_MSG("Failed to queue report, exceeded retry window");
-      break;
-    }
-
-    // Wait a short time before checking again
-    // Use shorter delays early in the retry window, longer ones later
-    TickType_t delay_time = (elapsed < pdMS_TO_TICKS(1000)) ? pdMS_TO_TICKS(1) :  // 1ms delays in first second
-                              pdMS_TO_TICKS(10);                                  // 10ms delays after that
-    vTaskDelay(delay_time);
-  }
+  // For low latency, don't wait long - just try once and evict if needed
+  // If queue is full, immediately evict the oldest report to make space
 
   // If queue is still full after retrying, we need to evict the oldest report
   if (uxQueueSpacesAvailable(queue_handle_) == 0) {

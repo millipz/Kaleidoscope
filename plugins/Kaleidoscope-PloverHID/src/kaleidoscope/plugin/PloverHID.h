@@ -43,7 +43,6 @@ class PloverHID : public kaleidoscope::Plugin {
 
  private:
   static uint8_t report_[8];  // 64-bit report data
-  static String setup_debug_;
   static void sendReport();
 };
 
