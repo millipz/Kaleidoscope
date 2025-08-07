@@ -57,7 +57,7 @@ uint8_t PloverHID::report_[8];
 uint8_t PloverHID::pending_report_[8];
 bool PloverHID::report_pending_ = false;
 uint16_t PloverHID::last_report_time_ = 0;
-uint16_t PloverHID::report_delay_ms_ = 2;  // Minimum delay between reports
+uint16_t PloverHID::report_delay_ms_ = 0;  // No artificial delay for steno reports
 bool PloverHID::keys_held_ = false;
 
 EventHandlerResult PloverHID::onSetup() {
@@ -126,11 +126,37 @@ EventHandlerResult PloverHID::onKeyEvent(KeyEvent &event) {
     // printPendingReport();
   }
 
-  // Don't send immediately - let afterEachCycle handle it
+  // Send immediately if report has changed (like ZMK approach)
+  if (report_pending_) {
+    uint16_t current_time = millis();
+    
+    // Check if enough time has passed since last report (respecting minimum delay)
+    if (current_time - last_report_time_ >= report_delay_ms_) {
+      // Check if the report has actually changed
+      bool report_changed = false;
+      for (uint8_t i = 0; i < 8; i++) {
+        if (report_[i] != pending_report_[i]) {
+          report_changed = true;
+          report_[i] = pending_report_[i];
+        }
+      }
+
+      // Send the report if it has changed
+      if (report_changed) {
+        sendReport();
+        last_report_time_ = current_time;
+      }
+      
+      // Clear the pending flag after processing
+      report_pending_ = false;
+    }
+  }
+
   return EventHandlerResult::EVENT_CONSUMED;
 }
 
 EventHandlerResult PloverHID::afterEachCycle() {
+  // Handle any delayed reports that couldn't be sent immediately due to timing constraints
   if (!report_pending_) {
     return EventHandlerResult::OK;
   }
@@ -154,7 +180,7 @@ EventHandlerResult PloverHID::afterEachCycle() {
   // Send the report if it has changed
   if (report_changed) {
     // Debug output disabled for BLE
-    // Serial.print("PloverHID: Sending report - ");
+    // Serial.print("PloverHID: Sending delayed report - ");
     // printCurrentReport();
     sendReport();
     last_report_time_ = current_time;

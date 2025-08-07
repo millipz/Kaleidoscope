@@ -127,8 +127,9 @@ class HIDD : public BLEHidGeneric {
   static constexpr size_t QUEUE_SIZE               = 512;  // Absurdly large queue size
   static constexpr uint16_t MAX_BLE_NOTIFY_RETRIES = 500;
   static constexpr uint8_t RETRY_DELAY_MS          = 10;  // Time between retries
-  static constexpr uint8_t KEYSTROKE_INTERVAL_MS   = 1;
-  ;  // Min time between keystrokes
+  static constexpr uint8_t STENO_RETRY_DELAY_MS    = 2;   // Faster retries for steno
+  static constexpr uint8_t KEYSTROKE_INTERVAL_MS   = 1;   // Min time between keystrokes
+  static constexpr uint8_t STENO_KEYSTROKE_INTERVAL_MS = 0;  // No delay for steno reports
   // Queue storage and handle
   StaticQueue_t queue_buffer_;
   uint8_t queue_storage_[QUEUE_SIZE * sizeof(QueuedReport)];

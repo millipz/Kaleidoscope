@@ -233,15 +233,26 @@ void HIDD::processReportQueue_(void *pvParameters) {
     while (uxQueueMessagesWaiting(hidd->queue_handle_) > 0) {
       processed_any = true;
 
+      // Peek at the next report to check its type
+      QueuedReport report;
+      bool is_steno_report = false;
+      if (xQueuePeek(hidd->queue_handle_, &report, 0) == pdTRUE) {
+        is_steno_report = (report.report_id == RID_PLOVER_HID);
+      }
+
       // Try to process the next report
       if (!hidd->processNextReport_()) {
-        // Failed to send - wait a bit before next retry
-        DEBUG_BLE_MSG("Failed to send report, waiting %dms before next retry", RETRY_DELAY_MS);
-        vTaskDelay(pdMS_TO_TICKS(RETRY_DELAY_MS));
+        // Failed to send - wait a bit before next retry, shorter for steno
+        uint8_t retry_delay = is_steno_report ? STENO_RETRY_DELAY_MS : RETRY_DELAY_MS;
+        DEBUG_BLE_MSG("Failed to send report, waiting %dms before next retry", retry_delay);
+        vTaskDelay(pdMS_TO_TICKS(retry_delay));
       } else {
-        // Successfully sent a report
-        DEBUG_BLE_MSG("Sent report successfully, waiting %dms before next report", KEYSTROKE_INTERVAL_MS);
-        vTaskDelay(pdMS_TO_TICKS(KEYSTROKE_INTERVAL_MS));
+        // Successfully sent a report - check if it's a steno report for faster processing
+        uint8_t interval_ms = is_steno_report ? STENO_KEYSTROKE_INTERVAL_MS : KEYSTROKE_INTERVAL_MS;
+        if (interval_ms > 0) {
+          DEBUG_BLE_MSG("Sent report successfully, waiting %dms before next report", interval_ms);
+          vTaskDelay(pdMS_TO_TICKS(interval_ms));
+        }
       }
 
       // Continue the loop to process more reports or retry

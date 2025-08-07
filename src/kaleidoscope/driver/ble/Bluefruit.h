@@ -127,9 +127,10 @@ class BLEBluefruit : public Base {
   kaleidoscope::EventHandlerResult handleBLEOperationKey(uint8_t keyCode);
 
   // Connection parameter constants for keyboard optimization
-  static constexpr uint16_t CONN_INTERVAL_MIN_MS   = 12;
-  static constexpr uint16_t CONN_INTERVAL_MAX_MS   = 24;
-  static constexpr uint16_t SLAVE_LATENCY          = 4;
+  // Optimized for low-latency stenography - shorter intervals, lower latency
+  static constexpr uint16_t CONN_INTERVAL_MIN_MS   = 8;     // Minimum 8ms interval (6 units * 1.25ms)
+  static constexpr uint16_t CONN_INTERVAL_MAX_MS   = 15;    // Maximum 15ms interval (12 units * 1.25ms)
+  static constexpr uint16_t SLAVE_LATENCY          = 0;     // No latency for steno
   static constexpr uint16_t SUPERVISION_TIMEOUT_MS = 400;
   static constexpr int8_t CONN_TX_POWER            = -4;
   static constexpr int8_t SLEEP_TX_POWER           = -40;  // Minimum TX power for sleep
