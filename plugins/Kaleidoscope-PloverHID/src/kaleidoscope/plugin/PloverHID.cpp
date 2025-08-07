@@ -53,6 +53,7 @@ namespace kaleidoscope {
 namespace plugin {
 
 uint8_t PloverHID::report_[8];
+bool PloverHID::report_dirty_ = false;
 
 EventHandlerResult PloverHID::onSetup() {
   return EventHandlerResult::OK;
@@ -80,15 +81,24 @@ EventHandlerResult PloverHID::onKeyEvent(KeyEvent &event) {
   if (keyToggledOn(event.state)) {
     // Set the bit for key press (using reversed bit index)
     report_[byte_index] |= (1 << reversed_bit_index);
+    report_dirty_ = true;
   } else if (keyToggledOff(event.state)) {
     // Clear the bit for key release (using reversed bit index)
     report_[byte_index] &= ~(1 << reversed_bit_index);
+    report_dirty_ = true;
   }
 
-  // Send the report immediately (real-time key state changes)
-  sendReport();
-
+  // Don't send immediately - batch reports per scan cycle
   return EventHandlerResult::EVENT_CONSUMED;
+}
+
+EventHandlerResult PloverHID::beforeReportingState(const KeyEvent &event) {
+  // Send the report once per scan cycle if there were changes
+  if (report_dirty_) {
+    sendReport();
+    report_dirty_ = false;
+  }
+  return EventHandlerResult::OK;
 }
 
 void PloverHID::sendReport() {
@@ -98,11 +108,7 @@ void PloverHID::sendReport() {
   // The Hybrid driver will route to the active connection (USB or Bluetooth)
 
   // Send via Bluefruit (Bluetooth) interface
-  // For low-latency steno, try direct transmission first, fall back to queue if it fails
-  if (!kaleidoscope::driver::hid::bluefruit::blehid.BLEHidGeneric::inputReport(kaleidoscope::driver::hid::bluefruit::RID_PLOVER_HID, report_, sizeof(report_))) {
-    // Direct send failed, use queued approach
-    kaleidoscope::driver::hid::bluefruit::blehid.sendInputReport(kaleidoscope::driver::hid::bluefruit::RID_PLOVER_HID, report_, sizeof(report_));
-  }
+  kaleidoscope::driver::hid::bluefruit::blehid.sendInputReport(kaleidoscope::driver::hid::bluefruit::RID_PLOVER_HID, report_, sizeof(report_));
 
   // Send via TinyUSB (USB) interface using MultiReport
   // Use the same pattern as TUSBConsumerControl and TUSBMouse

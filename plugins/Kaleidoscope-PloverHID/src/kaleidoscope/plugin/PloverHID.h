@@ -40,9 +40,11 @@ class PloverHID : public kaleidoscope::Plugin {
   EventHandlerResult onSetup();
   EventHandlerResult onNameQuery();
   EventHandlerResult onKeyEvent(KeyEvent &event);
+  EventHandlerResult beforeReportingState(const KeyEvent &event);
 
  private:
   static uint8_t report_[8];  // 64-bit report data
+  static bool report_dirty_;  // Track if report needs to be sent
   static void sendReport();
 };
 

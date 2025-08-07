@@ -126,9 +126,9 @@ class BLEBluefruit : public Base {
   // Helper method to handle BLE operation keys
   kaleidoscope::EventHandlerResult handleBLEOperationKey(uint8_t keyCode);
 
-  // Connection parameter constants optimized for low-latency steno
-  static constexpr uint16_t CONN_INTERVAL_MIN_MS   = 7;   // Minimum allowed BLE interval for keyboards
-  static constexpr uint16_t CONN_INTERVAL_MAX_MS   = 9;
+  // Connection parameter constants for keyboard optimization
+  static constexpr uint16_t CONN_INTERVAL_MIN_MS   = 12;
+  static constexpr uint16_t CONN_INTERVAL_MAX_MS   = 24;
   static constexpr uint16_t SLAVE_LATENCY          = 4;
   static constexpr uint16_t SUPERVISION_TIMEOUT_MS = 400;
   static constexpr int8_t CONN_TX_POWER            = -4;
