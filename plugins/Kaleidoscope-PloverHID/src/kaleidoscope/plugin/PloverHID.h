@@ -40,11 +40,24 @@ class PloverHID : public kaleidoscope::Plugin {
   EventHandlerResult onSetup();
   EventHandlerResult onNameQuery();
   EventHandlerResult onKeyEvent(KeyEvent &event);
-  EventHandlerResult beforeReportingState(const KeyEvent &event);
+  EventHandlerResult afterEachCycle();  // New handler for coalescing
+  
+  // Configuration methods
+  static void setReportDelay(uint16_t delay_ms);
+  static uint16_t getReportDelay();
+  
+  // Debug methods (disabled for BLE)
+  // static void printCurrentReport();
+  // static void printPendingReport();
 
  private:
-  static uint8_t report_[8];  // 64-bit report data
-  static bool report_dirty_;  // Track if report needs to be sent
+  static uint8_t report_[8];          // Current report
+  static uint8_t pending_report_[8];  // Pending changes
+  static bool report_pending_;        // Flag for pending changes
+  static uint16_t last_report_time_;  // Time of last report
+  static uint16_t report_delay_ms_;   // Minimum delay between reports
+  static bool keys_held_;             // Any keys currently held
+  
   static void sendReport();
 };
 

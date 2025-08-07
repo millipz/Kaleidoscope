@@ -52,10 +52,17 @@
 namespace kaleidoscope {
 namespace plugin {
 
+// Static member variables
 uint8_t PloverHID::report_[8];
-bool PloverHID::report_dirty_ = false;
+uint8_t PloverHID::pending_report_[8];
+bool PloverHID::report_pending_ = false;
+uint16_t PloverHID::last_report_time_ = 0;
+uint16_t PloverHID::report_delay_ms_ = 2;  // Minimum delay between reports
+bool PloverHID::keys_held_ = false;
 
 EventHandlerResult PloverHID::onSetup() {
+  memset(report_, 0, sizeof(report_));
+  memset(pending_report_, 0, sizeof(pending_report_));
   return EventHandlerResult::OK;
 }
 
@@ -77,52 +84,153 @@ EventHandlerResult PloverHID::onKeyEvent(KeyEvent &event) {
   // Based on user feedback that S_L maps to A, T_L maps to H, etc.
   uint8_t reversed_bit_index = 7 - bit_index;
 
-  // Update the report based on key state
+  // Update the pending report based on key state
   if (keyToggledOn(event.state)) {
-    // Set the bit for key press (using reversed bit index)
-    report_[byte_index] |= (1 << reversed_bit_index);
-    report_dirty_ = true;
+    // Set the bit for key press
+    pending_report_[byte_index] |= (1 << reversed_bit_index);
+    keys_held_ = true;
+    report_pending_ = true;
+    
+    // Debug output disabled for BLE
+    // Serial.print("PloverHID: Key press - index=");
+    // Serial.print(key_index);
+    // Serial.print(", byte=");
+    // Serial.print(byte_index);
+    // Serial.print(", bit=");
+    // Serial.println(reversed_bit_index);
+    // printPendingReport();
+    
   } else if (keyToggledOff(event.state)) {
-    // Clear the bit for key release (using reversed bit index)
-    report_[byte_index] &= ~(1 << reversed_bit_index);
-    report_dirty_ = true;
+    // Clear the bit for key release
+    pending_report_[byte_index] &= ~(1 << reversed_bit_index);
+    
+    // Check if any keys are still held
+    keys_held_ = false;
+    for (uint8_t i = 0; i < 8; i++) {
+      if (pending_report_[i] != 0) {
+        keys_held_ = true;
+        break;
+      }
+    }
+    report_pending_ = true;
+    
+    // Debug output disabled for BLE
+    // Serial.print("PloverHID: Key release - index=");
+    // Serial.print(key_index);
+    // Serial.print(", byte=");
+    // Serial.print(byte_index);
+    // Serial.print(", bit=");
+    // Serial.print(reversed_bit_index);
+    // Serial.print(", keys_held=");
+    // Serial.println(keys_held_);
+    // printPendingReport();
   }
 
-  // Don't send immediately - batch reports per scan cycle
+  // Don't send immediately - let afterEachCycle handle it
   return EventHandlerResult::EVENT_CONSUMED;
 }
 
-EventHandlerResult PloverHID::beforeReportingState(const KeyEvent &event) {
-  // Send the report once per scan cycle if there were changes
-  if (report_dirty_) {
-    sendReport();
-    report_dirty_ = false;
+EventHandlerResult PloverHID::afterEachCycle() {
+  if (!report_pending_) {
+    return EventHandlerResult::OK;
   }
+
+  uint16_t current_time = millis();
+  
+  // Check if enough time has passed since last report
+  if (current_time - last_report_time_ < report_delay_ms_) {
+    return EventHandlerResult::OK;
+  }
+
+  // Check if the report has changed
+  bool report_changed = false;
+  for (uint8_t i = 0; i < 8; i++) {
+    if (report_[i] != pending_report_[i]) {
+      report_changed = true;
+      report_[i] = pending_report_[i];
+    }
+  }
+
+  // Send the report if it has changed
+  if (report_changed) {
+    // Debug output disabled for BLE
+    // Serial.print("PloverHID: Sending report - ");
+    // printCurrentReport();
+    sendReport();
+    last_report_time_ = current_time;
+  }
+  
+  // Always clear the pending flag after processing
+  report_pending_ = false;
+
   return EventHandlerResult::OK;
 }
 
 void PloverHID::sendReport() {
-
 #ifdef ARDUINO_ARCH_NRF52
-  // For nRF52 devices with Hybrid HID (Preonic), send via both interfaces
-  // The Hybrid driver will route to the active connection (USB or Bluetooth)
-
+  // For nRF52 devices with Hybrid HID (Preonic)
+  // The Hybrid driver will route to the active connection automatically
+  
   // Send via Bluefruit (Bluetooth) interface
-  kaleidoscope::driver::hid::bluefruit::blehid.sendInputReport(kaleidoscope::driver::hid::bluefruit::RID_PLOVER_HID, report_, sizeof(report_));
+  kaleidoscope::driver::hid::bluefruit::blehid.sendInputReport(
+    kaleidoscope::driver::hid::bluefruit::RID_PLOVER_HID, 
+    report_, 
+    sizeof(report_)
+  );
 
   // Send via TinyUSB (USB) interface using MultiReport
-  // Use the same pattern as TUSBConsumerControl and TUSBMouse
-  kaleidoscope::driver::hid::tinyusb::TUSBMultiReport().sendReport(kaleidoscope::driver::hid::tinyusb::RID_PLOVER_HID, report_, sizeof(report_));
+  kaleidoscope::driver::hid::tinyusb::TUSBMultiReport().sendReport(
+    kaleidoscope::driver::hid::tinyusb::RID_PLOVER_HID, 
+    report_, 
+    sizeof(report_)
+  );
 
 #elif defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_RP2040)
-  // For TinyUSB devices (SAMD, RP2040), use TinyUSB MultiReport
-  kaleidoscope::driver::hid::tinyusb::TUSBMultiReport().sendReport(kaleidoscope::driver::hid::tinyusb::RID_PLOVER_HID, report_, sizeof(report_));
+  // For TinyUSB devices
+  kaleidoscope::driver::hid::tinyusb::TUSBMultiReport().sendReport(
+    kaleidoscope::driver::hid::tinyusb::RID_PLOVER_HID, 
+    report_, 
+    sizeof(report_)
+  );
 #else
-  // For AVR and other architectures using KeyboardioHID
-  // Use the PloverHIDInterface directly
+  // For AVR and other architectures
   ::PloverHIDInterface.sendReport(report_, sizeof(report_));
 #endif
 }
+
+// Configuration methods
+void PloverHID::setReportDelay(uint16_t delay_ms) {
+  report_delay_ms_ = delay_ms;
+}
+
+uint16_t PloverHID::getReportDelay() {
+  return report_delay_ms_;
+}
+
+// Debug methods (disabled for BLE)
+/*
+void PloverHID::printCurrentReport() {
+  Serial.print("Current report: ");
+  for (uint8_t i = 0; i < 8; i++) {
+    Serial.print("0x");
+    if (report_[i] < 16) Serial.print("0");
+    Serial.print(report_[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println();
+}
+
+void PloverHID::printPendingReport() {
+  Serial.print("Pending report: ");
+  for (uint8_t i = 0; i < 8; i++) {
+    Serial.print("0x");
+    if (pending_report_[i] < 16) Serial.print("0");
+    Serial.print(pending_report_[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println();
+}
+*/
 
 }  // namespace plugin
 }  // namespace kaleidoscope

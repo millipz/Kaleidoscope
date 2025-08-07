@@ -162,16 +162,16 @@ KEYMAPS(
 
   [STENO] = KEYMAP
   (
-    // Top row: Number keys and layer switching
-    ___, PH(NUM), PH(NUM), PH(NUM), PH(NUM),
+    // Top row: Encoder left, encoder right, macro key (transparent), FUN key (transparent), extra key
+    ___, Consumer_VolumeDecrement, Consumer_VolumeIncrement, ___, ___,
     // Row 1: Number keys across the top
     PH(NUM),        PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),         PH(NUM),
-    // Row 2: Left consonants, stars, right consonants (finger keys upper)
-    MoveToLayer(COLEMAK), PH(S_L),   PH(T_L),         PH(P_L),         PH(H_L),         PH(STAR),        PH(STAR),        PH(F_R),         PH(P_R),         PH(L_R),         PH(T_R),         PH(D_R),
-    // Row 3: Left consonants, stars, right consonants (finger keys lower)
+    // Row 2: Empty row for future expansion
+    MoveToLayer(COLEMAK), ___,       ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,
+    // Row 3: Left consonants, stars, right consonants (moved down from row 2)
+    ___,            PH(S_L),         PH(T_L),         PH(P_L),         PH(H_L),         PH(STAR),        PH(STAR),        PH(F_R),         PH(P_R),         PH(L_R),         PH(T_R),         PH(D_R),
+    // Row 4: Left consonants, stars, right consonants (moved down from row 3)
     ___,            PH(S_L),         PH(K_L),         PH(W_L),         PH(R_L),         PH(STAR),        PH(STAR),        PH(R_R),         PH(B_R),         PH(G_R),         PH(S_R),         PH(Z_R),
-    // Row 4: Empty except for some access keys
-    ___,            ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,
     // Row 5: Thumb keys for vowels in center positions
     ShiftToLayer(COLEMAK), ___,      ___,             ___,             PH(A),           PH(O),           PH(E),           PH(U),           ___,             ___,             ___,             ___
   )
@@ -590,7 +590,7 @@ void setup() {
   Keyclick.disable();
 
   // Layer.move(EEPROMSettings.default_layer());  // Commented out to use compiled keymap
-  Layer.move(COLEMAK);  // Start with Colemak layer
+  Layer.move(STENO);  // Start with STENO layer for easier debugging
 
   // To avoid any surprises, SpaceCadet is turned off by default. However, it
   // can be permanently enabled via Chrysalis, so we should only disable it if
