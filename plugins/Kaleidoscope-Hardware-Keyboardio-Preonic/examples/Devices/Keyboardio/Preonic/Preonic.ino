@@ -40,6 +40,7 @@
 #include "Kaleidoscope-LEDControl.h"
 #include "Kaleidoscope-Keyclick.h"
 #include "Kaleidoscope-MagicCombo.h"
+#include "Kaleidoscope-Steno.h"
 
 #include "Kaleidoscope-LEDEffect-Rainbow.h"
 #include "Kaleidoscope-LEDEffect-BootGreeting.h"
@@ -85,6 +86,8 @@ enum {
   MACRO_BT_SELECT_2,  // Select slot 2
   MACRO_BT_SELECT_3,  // Select slot 3
   MACRO_BT_SELECT_4,  // Select slot 4
+  MACRO_SWITCH_TO_COLEMAK,
+  MACRO_SWITCH_TO_STENO,
   MACRO_BT_PAIR,      // Start pairing for selected slot
   MACRO_BT_OFF,
   MACRO_BATTERY_LEVEL  // Report current battery level
@@ -111,24 +114,88 @@ USE_MAGIC_COMBOS(
 #define Key_Plus LSHIFT(Key_Equals)
 
 enum {
-  QWERTY,
+  STENO,
+  COLEMAK,
   LOWER,
   RAISE,
   FUN
 };
 
 // clang-format off
+
+/*
+ * STENO Layer (GeminiPR Stenography) - Ward Stone Ireland Layout - DEFAULT
+ * Pattern:  # # # # # # # # # # # #
+ *          _STPH**FPLTD
+ *          _SKWR**RBGSZ  
+ *          ____AOEU____
+ * ┌─────┬─────┬─────┬─────┬─────┐
+ * │Vol- │Vol+ │ ANY │ FUN │Play │
+ * ├─────┼─────┼─────┼─────┼─────┼─────┬─────┬─────┬─────┬─────┬─────┬─────┐
+ * │     │     │     │     │     │     │     │     │     │     │     │     │
+ * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+ * │ #   │ #   │ #   │ #   │ #   │ #   │ #   │ #   │ #   │ #   │ #   │ #   │
+ * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+ * │     │ S-  │ T-  │ P-  │ H-  │ *   │ *   │ -F  │ -P  │ -L  │ -T  │ -D  │
+ * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+ * │     │ S-  │ K-  │ W-  │ R-  │ *   │ *   │ -R  │ -B  │ -G  │ -S  │ -Z  │
+ * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+ * │Colem│     │     │     │  A  │  O  │  E  │  U  │     │     │     │     │
+ * └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+ */
 KEYMAPS(
-  [QWERTY] = KEYMAP
+  [STENO] = KEYMAP
   (
-    Consumer_VolumeDecrement, Consumer_VolumeIncrement, M(MACRO_ANY), ShiftToLayer(FUN),                 Consumer_PlaySlashPause,
+    Consumer_VolumeDecrement, Consumer_VolumeIncrement, M(MACRO_ANY), ShiftToLayer(FUN), Consumer_PlaySlashPause,
+    ___,            ___,             ___,             ___,             ___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___,
+    S(N1),          S(N2),           S(N3),           S(N4),           S(N5),           S(N6),           S(N7),           S(N8),           S(N9),                      S(NA),           S(NB),           S(NC),
+    ___,            S(S1),           S(TL),           S(PL),           S(HL),           S(ST1),          S(ST3),          S(FR),           S(PR),                      S(LR),           S(TR),           S(DR),
+    ___,            S(S2),           S(KL),           S(WL),           S(RL),           S(ST2),          S(ST4),          S(RR),           S(BR),                      S(GR),           S(SR),           S(ZR),
+    M(MACRO_SWITCH_TO_COLEMAK), ___, ___,             ___,             S(A),            S(O),            S(E),            S(U),            ___,                        ___,             ___,             ___
+  ),
+
+  /*
+   * COLEMAK Layer
+   * ┌─────┬─────┬─────┬─────┬─────┐
+   * │     │     │     │ FUN │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┬─────┬─────┬─────┬─────┬─────┬─────┐
+   * │  `  │  1  │  2  │  3  │  4  │  5  │  6  │  7  │  8  │  9  │  0  │  -  │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │ Tab │  Q  │  W  │  F  │  P  │  G  │  J  │  L  │  U  │  Y  │  ;  │Bksp │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │ Esc │  A  │  R  │  S  │  T  │  D  │  H  │  N  │  E  │  I  │  O  │  '  │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │Shift│  Z  │  X  │  C  │  V  │  B  │  K  │  M  │  ,  │  .  │  /  │Enter│
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │Hyper│Ctrl │ Alt │ Gui │Lower│Bksp │Space│Raise│ ←   │  ↓  │  ↑  │  →  │
+   * └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+   */
+  [COLEMAK] = KEYMAP
+  (
+    ___,            ___,             ___,             ShiftToLayer(FUN),             ___,
     Key_Backtick,   Key_1,           Key_2,           Key_3,                   Key_4,           Key_5,           Key_6,           Key_7,           Key_8,                      Key_9,           Key_0,           Key_Minus,
-    Key_Tab,        Key_Q,           Key_W,           Key_E,                   Key_R,           Key_T,           Key_Y,           Key_U,           Key_I,                      Key_O,           Key_P,           Key_Backspace,
-    Key_Escape,     Key_A,           Key_S,           Key_D,                   Key_F,           Key_G,           Key_H,           Key_J,           Key_K,                      Key_L,           Key_Semicolon,   Key_Quote,
-    Key_LeftShift,  Key_Z,           Key_X,           Key_C,                   Key_V,           Key_B,           Key_N,           Key_M,           Key_Comma,                  Key_Period,      Key_Slash,       Key_Enter,
+    Key_Tab,        Key_Q,           Key_W,           Key_F,                   Key_P,           Key_G,           Key_J,           Key_L,           Key_U,                      Key_Y,           Key_Semicolon,   Key_Backspace,
+    Key_Escape,     Key_A,           Key_R,           Key_S,                   Key_T,           Key_D,           Key_H,           Key_N,           Key_E,                      Key_I,           Key_O,           Key_Quote,
+    Key_LeftShift,  Key_Z,           Key_X,           Key_C,                   Key_V,           Key_B,           Key_K,           Key_M,           Key_Comma,                  Key_Period,      Key_Slash,       Key_Enter,
     Key_Hyper,      Key_LeftControl, Key_LeftAlt,     Key_LeftGui,            ShiftToLayer(LOWER),       Key_Backspace,   Key_Space,       ShiftToLayer(RAISE),       Key_LeftArrow,             Key_DownArrow,   Key_UpArrow,     Key_RightArrow
   ),
 
+  /*
+   * LOWER Layer (Numbers/Numpad)
+   * ┌─────┬─────┬─────┬─────┬─────┐
+   * │     │     │     │     │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┬─────┬─────┬─────┬─────┬─────┬─────┐
+   * │     │     │     │     │     │     │     │     │  /  │  *  │  -  │  =  │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │     │     │     │     │     │     │     │  7  │  8  │  9  │  -  │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │     │     │     │     │     │     │     │  4  │  5  │  6  │  +  │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │     │     │     │     │     │     │     │  1  │  2  │  3  │  +  │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │     │     │     │     │XXXXX│     │Bksp │  0  │  .  │     │Enter│     │
+   * └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+   */
   [LOWER] = KEYMAP
   (
    ___, ___,  ___,            ___,             ___,
@@ -139,6 +206,22 @@ KEYMAPS(
     ___,            ___,             ___,             ___,             ___,             ___,             Key_Backspace,   Key_0,           Key_Period,     ___,             Key_Enter,       ___
   ),
 
+  /*
+   * RAISE Layer (Function Keys, Mouse, Navigation)
+   * ┌─────┬─────┬─────┬─────┬─────┐
+   * │     │     │     │     │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┬─────┬─────┬─────┬─────┬─────┬─────┐
+   * │ Esc │ F1  │ F2  │ F3  │ F4  │ F5  │ F6  │ F7  │ F8  │ F9  │F10  │Bksp │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │  `  │     │ M↑  │     │MWrpN│MWrpN│  \  │  {  │  }  │  [  │  ]  │ Del │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │Caps │ M←  │ M↓  │ M→  │MWrpS│MWrpS│  ←  │  ↓  │  ↑  │  →  │     │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │     │ MBL │ MBM │ MBR │     │MWEnd│     │     │     │     │     │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │     │     │RAlt │     │     │     │     │XXXXX│     │     │     │     │
+   * └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+   */
   [RAISE] = KEYMAP
   (
       ___, ___,  ___,            ___,             ___,
@@ -149,10 +232,26 @@ KEYMAPS(
     ___,            ___,             Key_RightAlt,    ___,                    ___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___
   ),
 
+  /*
+   * FUN Layer (Bluetooth, Media, System)
+   * ┌─────┬─────┬─────┬─────┬─────┐
+   * │     │     │     │     │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┬─────┬─────┬─────┬─────┬─────┬─────┐
+   * │BT Of│BT 1 │BT 2 │BT 3 │BT 4 │BTPr │     │     │     │ Ver │Colem│Steno│
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │LEDFx│     │Vol+ │     │     │     │     │     │     │     │     │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │     │ ⏮  │Vol- │ ⏭  │     │     │     │     │     │     │     │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │Click│     │Mute │     │     │     │     │     │     │     │     │     │
+   * ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
+   * │Batt │     │     │     │     │     │     │     │     │     │     │     │
+   * └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+   */
   [FUN] = KEYMAP
   (
        ___, ___, ___,            ___,             ___,
-    Key_BLEOff, Key_BLESelectDevice1, Key_BLESelectDevice2, Key_BLESelectDevice3, Key_BLESelectDevice4, Key_BLEStartPairing, ___, ___, ___, ___, ___, M(MACRO_VERSION_INFO),
+    Key_BLEOff, Key_BLESelectDevice1, Key_BLESelectDevice2, Key_BLESelectDevice3, Key_BLESelectDevice4, Key_BLEStartPairing, ___, ___, ___, M(MACRO_VERSION_INFO), M(MACRO_SWITCH_TO_COLEMAK), M(MACRO_SWITCH_TO_STENO),
     Key_LEDEffectNext,___,           Consumer_VolumeIncrement,___,            ___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___,
     ___,            Consumer_ScanPreviousTrack,Consumer_VolumeDecrement,Consumer_ScanNextTrack,___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___,
     Key_ToggleKeyclick,___,             Consumer_Mute,   ___,                    ___,             ___,             ___,             ___,             ___,                        ___,             ___,             ___,
@@ -221,12 +320,16 @@ COLORMAPS(
 
 KALEIDOSCOPE_INIT_PLUGINS(
   // ----------------------------------------------------------------------
+  // Stenography support
+  GeminiPR,
+
+  // ----------------------------------------------------------------------
   // Chrysalis plugins
 
   // The EEPROMSettings & EEPROMKeymap plugins make it possible to have an
   // editable keymap in EEPROM.
   EEPROMSettings,
-  EEPROMKeymap,
+  // EEPROMKeymap, // Disabled - using flash keymap instead
 
   // Focus allows bi-directional communication with the host, and is the
   // interface through which the keymap in EEPROM can be edited.
@@ -329,7 +432,13 @@ void configureIndicators() {
     KeyAddr(0, 2),
     KeyAddr(0, 3)};
   LEDIndicators.setSlots(4, indicator_leds);
+  
+  // Set dimmer colors for subtle layer indication
+  LEDIndicators.setColor(LEDIndicators.color_blue, CRGB(0, 0, 32));   // Dimmer blue for steno
+  LEDIndicators.setColor(LEDIndicators.color_green, CRGB(0, 32, 0));  // Dimmer green for colemak
 }
+
+// Layer indicators are now handled directly in the switch macros
 
 
 static void versionInfoMacro(uint8_t key_state) {
@@ -531,16 +640,51 @@ const macro_t *macroAction(uint8_t macro_id, KeyEvent &event) {
   case MACRO_BATTERY_LEVEL:
     batteryLevelMacro(event.state);
     break;
+  case MACRO_SWITCH_TO_COLEMAK:
+    if (keyToggledOn(event.state)) {
+      Layer.move(COLEMAK);
+      // Flash green LEDs for 3 seconds to indicate Colemak layer
+      for (uint8_t i = 0; i < 4; i++) {
+        LEDIndicators.showIndicator(KeyAddr(0, i), 
+                                    kaleidoscope::plugin::IndicatorEffect::Solid, 
+                                    CRGB(0, 64, 0), CRGB(0, 0, 0), 3000, 1);
+      }
+    }
+    break;
+  case MACRO_SWITCH_TO_STENO:
+    if (keyToggledOn(event.state)) {
+      Layer.move(STENO);
+      // Flash LEDs for 3 seconds to indicate Steno layer
+      for (uint8_t i = 0; i < 4; i++) {
+        LEDIndicators.showIndicator(KeyAddr(0, i), 
+                                    kaleidoscope::plugin::IndicatorEffect::Solid, 
+                                    CRGB(0, 32, 64), CRGB(0, 0, 0), 3000, 1);
+      }
+    }
+    break;
   }
   return MACRO_NONE;
+}
+
+// Function to clear EEPROM keymap (forces fallback to flash keymap)
+void clearEEPROMKeymap() {
+  // Clear the EEPROM keymap by writing invalid keys
+  // This forces Kaleidoscope to fall back to the flash keymap
+  for (uint16_t pos = 0; pos < (10 * 6 * 12); pos++) {
+    EEPROMKeymap.updateKey(pos, Key_NoKey);
+  }
 }
 
 void setup() {
   Kaleidoscope.setup();
   configureIndicators();
 
-  EEPROMKeymap.setup(9);
-  PreonicColormapEffect.max_layers(9);
+  // EEPROMKeymap.setup(10); // Disabled - using flash keymap instead
+  
+  // UNCOMMENT THE NEXT LINE TO CLEAR EEPROM KEYMAP (forces fallback to flash keymap)
+  // clearEEPROMKeymap();
+  
+  PreonicColormapEffect.max_layers(10);
   LEDRainbowEffect.brightness(25);
 
   DynamicMacros.reserve_storage(512);
@@ -550,7 +694,7 @@ void setup() {
   // Disable Keyclick by default
   Keyclick.disable();
 
-  Layer.move(EEPROMSettings.default_layer());
+  // Layer 0 (STENO) is now the default since EEPROMKeymap is disabled
 
   // To avoid any surprises, SpaceCadet is turned off by default. However, it
   // can be permanently enabled via Chrysalis, so we should only disable it if
@@ -568,3 +712,4 @@ void setup() {
 void loop() {
   Kaleidoscope.loop();
 }
+
